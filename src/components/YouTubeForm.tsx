@@ -1,5 +1,6 @@
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { DevTool } from "@hookform/devtools";
+import { useEffect } from "react";
 
 let renderCount = 0;
 
@@ -33,26 +34,63 @@ export default function YouTubeForm() {
       dob: new Date(),
     },
   });
-  const { register, control, handleSubmit, formState } = form;
-  const { errors } = formState;
+
+  const { register, control, handleSubmit, formState, watch, getValues, setValue, reset, trigger } = form;
+  const {
+    errors,
+    touchedFields,
+    dirtyFields,
+    isDirty,
+    isValid,
+    isSubmitting,
+    isSubmitted,
+    isSubmitSuccessful,
+    submitCount,
+  } = formState;
+  // console.log(touchedFields, dirtyFields, isDirty);
+  console.log({ isSubmitting, isSubmitted, isSubmitSuccessful });
 
   const { fields, append, remove } = useFieldArray({
     name: "phNumbers",
     control: control,
   });
-  // const { name, ref, onChange, onBlur } = register("username");
 
   const onSubmit = (data: FormValues) => {
-    console.log(data);
+    console.log(data, "FORM VALUE");
   };
+
+  const onError = (errors: FieldErrors<FormValues>) => {
+    console.log(errors, "ERROR");
+  };
+
+  const handleGetValues = () => {
+    const values = getValues();
+    console.log(values);
+  };
+
+  const handleSetValues = () => {
+    setValue("email", "123123", { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+  };
+
+  // useEffect(() => {
+  //   const subscription = watch((value) => console.log(value));
+
+  //   return () => subscription.unsubscribe();
+  // }, [watch]);
+
+  useEffect(() => {
+    if (isSubmitSuccessful) {
+      reset();
+    }
+  }, [isSubmitSuccessful, reset]);
 
   renderCount++;
 
   return (
     <div>
       <h1>YouTube Form ({renderCount / 2})</h1>
-
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      {/* <h2>Watched value : {JSON.stringify(watchForm)}</h2> */}
+      <form onSubmit={handleSubmit(onSubmit, onError)} noValidate>
         <div className="form-control">
           <label htmlFor="username">Username</label>
           <input
@@ -79,6 +117,11 @@ export default function YouTubeForm() {
                 },
                 notBlackListed: (fieldValue) => {
                   return !fieldValue.endsWith("baddomain.com") || "This domain is not supported";
+                },
+                emailAvailable: async (fieldValue) => {
+                  const response = await fetch(`https://jsonplaceholder.typicode.com/users?email=${fieldValue}`);
+                  const data = await response.json();
+                  return data.length == 0 || "Email already exists";
                 },
               },
             })}
@@ -150,11 +193,30 @@ export default function YouTubeForm() {
 
         <div className="form-control">
           <label htmlFor="dob">Date of birth</label>
-          <input type="date" id="dob" {...register("dob", { required: { value: true, message: "dob is required" } })} />
+          <input
+            type="date"
+            id="dob"
+            {...register("dob", { required: { value: true, message: "dob is required" }, valueAsDate: true })}
+          />
           <p className="error">{errors.dob?.message}</p>
         </div>
 
-        <button>Submit</button>
+        <button disabled={!isDirty || isSubmitting}>Submit</button>
+        <button type="button" onClick={handleGetValues}>
+          Get values
+        </button>
+
+        <button type="button" onClick={handleSetValues}>
+          Set values
+        </button>
+
+        <button type="button" onClick={() => reset()}>
+          RESET
+        </button>
+
+        <button type="button" onClick={() => trigger()}>
+          Validate
+        </button>
 
         <DevTool control={control} />
       </form>
